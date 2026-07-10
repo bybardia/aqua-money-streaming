@@ -1,0 +1,10 @@
+# Deployment — Stellar Testnet
+
+- **Network:** Testnet
+- **Aqua contract:**     CAYCGEXSUJ2SYV5L3OQ52UOCWGNZ7XK6H7ODXAURYCLAE3HPS4SJZUFG
+- **Registry contract:** CCVABJMB3KN3DVTVJY5FCS5YXMXJKFQYCIRHRRJPQBTFWEDMNFA6P5HV
+- **Sample tx (initialize):** 6ec37dee236d703d941a5798bcda50377655d5885956a08a54cb6b14024cc8d0
+
+## Explorer
+- https://stellar.expert/explorer/testnet/contract/CAYCGEXSUJ2SYV5L3OQ52UOCWGNZ7XK6H7ODXAURYCLAE3HPS4SJZUFG
+- https://stellar.expert/explorer/testnet/contract/CCVABJMB3KN3DVTVJY5FCS5YXMXJKFQYCIRHRRJPQBTFWEDMNFA6P5HV
