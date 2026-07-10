@@ -38,6 +38,19 @@ pub enum Error {
     NothingToWithdraw = 6,
 }
 
+/// Amount vested for a stream at a given timestamp (linear vesting).
+fn vested_amount(stream: &Stream, now: u64) -> i128 {
+    if now <= stream.start_time {
+        0
+    } else if now >= stream.stop_time {
+        stream.amount
+    } else {
+        let elapsed = (now - stream.start_time) as i128;
+        let duration = (stream.stop_time - stream.start_time) as i128;
+        stream.amount * elapsed / duration
+    }
+}
+
 #[contract]
 pub struct AquaContract;
 
@@ -53,10 +66,8 @@ impl AquaContract {
         start_time: u64,
         stop_time: u64,
     ) -> Result<u64, Error> {
-        // Only the sender can create a stream from their own funds.
         sender.require_auth();
 
-        // Validate inputs.
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
@@ -64,11 +75,10 @@ impl AquaContract {
             return Err(Error::InvalidTimeRange);
         }
 
-        // Cross-contract call #1: pull tokens from sender into this contract (escrow).
+        // Cross-contract call: pull tokens from sender into this contract (escrow).
         let token_client = token::Client::new(&env, &token_addr);
         token_client.transfer(&sender, &env.current_contract_address(), &amount);
 
-        // Assign a new stream id.
         let mut count: u64 = env
             .storage()
             .instance()
@@ -77,7 +87,6 @@ impl AquaContract {
         let stream_id = count;
         count += 1;
 
-        // Build and persist the stream.
         let stream = Stream {
             sender: sender.clone(),
             recipient: recipient.clone(),
@@ -93,13 +102,65 @@ impl AquaContract {
             .set(&DataKey::Stream(stream_id), &stream);
         env.storage().instance().set(&DataKey::StreamCount, &count);
 
-        // Emit event for real-time frontend updates.
         env.events().publish(
             (symbol_short!("created"), stream_id),
             (sender, recipient, amount, start_time, stop_time),
         );
 
         Ok(stream_id)
+    }
+
+    /// Withdraw all currently-vested funds to the recipient.
+    pub fn withdraw(env: Env, stream_id: u64) -> Result<i128, Error> {
+        let mut stream: Stream = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Stream(stream_id))
+            .ok_or(Error::StreamNotFound)?;
+
+        // Only the recipient can withdraw.
+        stream.recipient.require_auth();
+
+        if stream.cancelled {
+            return Err(Error::StreamCancelled);
+        }
+
+        let now = env.ledger().timestamp();
+        let available = vested_amount(&stream, now) - stream.withdrawn;
+        if available <= 0 {
+            return Err(Error::NothingToWithdraw);
+        }
+
+        // Cross-contract call: pay out from escrow to the recipient.
+        let token_client = token::Client::new(&env, &stream.token);
+        token_client.transfer(
+            &env.current_contract_address(),
+            &stream.recipient,
+            &available,
+        );
+
+        stream.withdrawn += available;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Stream(stream_id), &stream);
+
+        env.events().publish(
+            (symbol_short!("withdraw"), stream_id),
+            (stream.recipient.clone(), available),
+        );
+
+        Ok(available)
+    }
+
+    /// Amount currently available to withdraw (live balance).
+    pub fn balance(env: Env, stream_id: u64) -> Result<i128, Error> {
+        let stream: Stream = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Stream(stream_id))
+            .ok_or(Error::StreamNotFound)?;
+        let now = env.ledger().timestamp();
+        Ok(vested_amount(&stream, now) - stream.withdrawn)
     }
 
     /// Read a stream by its id.
