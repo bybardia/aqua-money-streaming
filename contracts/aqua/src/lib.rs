@@ -152,6 +152,57 @@ impl AquaContract {
         Ok(available)
     }
 
+    /// Cancel a stream: pay the recipient their vested-but-unwithdrawn funds,
+    /// and refund the remaining unvested funds to the sender.
+    pub fn cancel_stream(env: Env, stream_id: u64) -> Result<(i128, i128), Error> {
+        let mut stream: Stream = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Stream(stream_id))
+            .ok_or(Error::StreamNotFound)?;
+
+        // Only the sender can cancel the stream.
+        stream.sender.require_auth();
+
+        if stream.cancelled {
+            return Err(Error::StreamCancelled);
+        }
+
+        let now = env.ledger().timestamp();
+        let vested = vested_amount(&stream, now);
+        let recipient_amount = vested - stream.withdrawn; // owed to recipient
+        let sender_refund = stream.amount - vested; // returned to sender
+
+        let token_client = token::Client::new(&env, &stream.token);
+        if recipient_amount > 0 {
+            token_client.transfer(
+                &env.current_contract_address(),
+                &stream.recipient,
+                &recipient_amount,
+            );
+        }
+        if sender_refund > 0 {
+            token_client.transfer(
+                &env.current_contract_address(),
+                &stream.sender,
+                &sender_refund,
+            );
+        }
+
+        stream.cancelled = true;
+        stream.withdrawn = vested;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Stream(stream_id), &stream);
+
+        env.events().publish(
+            (symbol_short!("cancel"), stream_id),
+            (recipient_amount, sender_refund),
+        );
+
+        Ok((recipient_amount, sender_refund))
+    }
+
     /// Amount currently available to withdraw (live balance).
     pub fn balance(env: Env, stream_id: u64) -> Result<i128, Error> {
         let stream: Stream = env
