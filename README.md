@@ -85,7 +85,7 @@ and input validation.
 ![Tests](screenshots/tests.png)
 
 ## 🎥 Demo
-- 🌐 Live demo: _coming soon (Vercel)_
+- 🌐 **Live demo:** https://aqua-money-streaming.vercel.app/
 - 📹 Video walkthrough: _coming soon (YouTube)_
 
 ## 📄 License
