@@ -44,13 +44,7 @@ pub enum Error {
 /// Minimal client interface for the Registry contract (for cross-contract calls).
 #[contractclient(name = "RegistryClient")]
 pub trait RegistryInterface {
-    fn record_stream(
-        env: Env,
-        stream_id: u64,
-        sender: Address,
-        recipient: Address,
-        amount: i128,
-    );
+    fn record_stream(env: Env, stream_id: u64, sender: Address, recipient: Address, amount: i128);
 }
 
 /// Amount vested for a stream at a given timestamp (linear vesting).
