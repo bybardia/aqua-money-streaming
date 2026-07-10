@@ -44,6 +44,13 @@ export default function Dashboard() {
     }
   }
 
+  function disconnect() {
+    setAddress(null);
+    setRecipient("");
+    setMsg(null);
+    setWalletErr(null);
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!address) return;
@@ -76,27 +83,39 @@ export default function Dashboard() {
   const short = address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "";
 
   return (
-    <div className="flex w-full max-w-xl flex-col items-center gap-6">
-      {address ? (
-        <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 font-mono text-sm text-cyan-300">
-          🟢 {short}
-        </span>
-      ) : (
-        <button
-          onClick={connect}
-          className="rounded-lg bg-cyan-500 px-5 py-2.5 font-semibold text-white hover:bg-cyan-400"
-        >
-          Connect Freighter
-        </button>
+    <div className="mx-auto w-full max-w-xl">
+      <div className="mb-6 flex items-center justify-center gap-2">
+        {address ? (
+          <>
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2 font-mono text-sm text-emerald-400">
+              🟢 {short}
+            </span>
+            <button
+              onClick={disconnect}
+              className="rounded-full border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800"
+            >
+              Disconnect
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={connect}
+            className="rounded-full bg-cyan-500 px-5 py-2 text-sm font-semibold text-white hover:bg-cyan-400"
+          >
+            Connect Freighter
+          </button>
+        )}
+      </div>
+      {walletErr && (
+        <p className="mb-4 text-center text-sm text-red-400">{walletErr}</p>
       )}
-      {walletErr && <p className="text-sm text-red-400">{walletErr}</p>}
 
       <Stats />
 
       {address && (
         <form
           onSubmit={submit}
-          className="w-full rounded-2xl border border-slate-700 bg-slate-900/60 p-6 text-left"
+          className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
         >
           <h2 className="mb-4 text-lg font-semibold text-white">
             Create a stream
@@ -114,14 +133,14 @@ export default function Dashboard() {
           />
           <button
             type="button"
-            onClick={() => setRecipient(address)}
+            onClick={() => setRecipient(address ?? "")}
             className="mb-4 mt-1 text-xs text-cyan-400 hover:underline"
           >
             Use my address (stream to myself)
           </button>
 
-          <div className="mb-4 flex gap-3">
-            <div className="flex-1">
+          <div className="mb-4 grid grid-cols-2 gap-3">
+            <div>
               <label className="mb-1 block text-xs text-slate-400">
                 Amount (XLM)
               </label>
@@ -135,7 +154,7 @@ export default function Dashboard() {
                 className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white outline-none"
               />
             </div>
-            <div className="flex-1">
+            <div>
               <label className="mb-1 block text-xs text-slate-400">
                 Duration (minutes)
               </label>
@@ -151,6 +170,7 @@ export default function Dashboard() {
           </div>
 
           <button
+            type="submit"
             disabled={busy}
             className="w-full rounded-lg bg-cyan-500 px-4 py-2.5 font-semibold text-white hover:bg-cyan-400 disabled:opacity-50"
           >
