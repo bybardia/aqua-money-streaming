@@ -1,5 +1,4 @@
-import WalletButton from "@/components/WalletButton";
-import Stats from "@/components/Stats";
+import Dashboard from "@/components/Dashboard";
 
 export default function Home() {
   return (
@@ -11,8 +10,7 @@ export default function Home() {
           salaries, subscriptions &amp; vesting.
         </p>
       </div>
-      <WalletButton />
-      <Stats />
+      <Dashboard />
     </main>
   );
 }
