@@ -7,6 +7,8 @@ import { NATIVE_TOKEN_ID } from "@/lib/config";
 import Stats from "@/components/Stats";
 import StreamList from "@/components/StreamList";
 
+const DISCONNECT_KEY = "aqua_disconnected";
+
 export default function Dashboard() {
   const [address, setAddress] = useState<string | null>(null);
   const [walletErr, setWalletErr] = useState<string | null>(null);
@@ -22,6 +24,7 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
+        if (localStorage.getItem(DISCONNECT_KEY) === "1") return;
         const c = await isConnected();
         if (c.isConnected) {
           const r = await getAddress();
@@ -38,6 +41,7 @@ export default function Dashboard() {
       if (!c.isConnected) return setWalletErr("Freighter not detected.");
       const r = await requestAccess();
       if (r.error) return setWalletErr(r.error);
+      localStorage.removeItem(DISCONNECT_KEY);
       setAddress(r.address);
     } catch {
       setWalletErr("Could not connect.");
@@ -45,10 +49,10 @@ export default function Dashboard() {
   }
 
   function disconnect() {
+    localStorage.setItem(DISCONNECT_KEY, "1");
     setAddress(null);
-    setRecipient("");
-    setMsg(null);
     setWalletErr(null);
+    setMsg(null);
   }
 
   async function submit(e: React.FormEvent) {
@@ -80,23 +84,25 @@ export default function Dashboard() {
     }
   }
 
-  const short = address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "";
+  const shortAddr = address
+    ? `${address.slice(0, 4)}...${address.slice(-4)}`
+    : "";
 
   return (
-    <div className="mx-auto w-full max-w-xl">
-      <div className="mb-6 flex items-center justify-center gap-2">
+    <div className="space-y-6">
+      <div className="flex flex-col items-center gap-2">
         {address ? (
-          <>
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2 font-mono text-sm text-emerald-400">
-              🟢 {short}
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-slate-800 px-4 py-1.5 font-mono text-sm text-emerald-300">
+              🟢 {shortAddr}
             </span>
             <button
               onClick={disconnect}
-              className="rounded-full border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800"
+              className="rounded-full border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800"
             >
               Disconnect
             </button>
-          </>
+          </div>
         ) : (
           <button
             onClick={connect}
@@ -105,21 +111,22 @@ export default function Dashboard() {
             Connect Freighter
           </button>
         )}
+        {address && (
+          <p className="text-xs text-slate-500">
+            To switch wallets, change the active account in Freighter, then reconnect.
+          </p>
+        )}
+        {walletErr && <p className="text-sm text-red-400">{walletErr}</p>}
       </div>
-      {walletErr && (
-        <p className="mb-4 text-center text-sm text-red-400">{walletErr}</p>
-      )}
 
       <Stats />
 
       {address && (
         <form
           onSubmit={submit}
-          className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+          className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
         >
-          <h2 className="mb-4 text-lg font-semibold text-white">
-            Create a stream
-          </h2>
+          <h2 className="mb-4 text-lg font-semibold text-white">Create a stream</h2>
 
           <label className="mb-1 block text-xs text-slate-400">
             Recipient address (G...)
@@ -133,17 +140,15 @@ export default function Dashboard() {
           />
           <button
             type="button"
-            onClick={() => setRecipient(address ?? "")}
+            onClick={() => setRecipient(address)}
             className="mb-4 mt-1 text-xs text-cyan-400 hover:underline"
           >
             Use my address (stream to myself)
           </button>
 
-          <div className="mb-4 grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs text-slate-400">
-                Amount (XLM)
-              </label>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs text-slate-400">Amount (XLM)</label>
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -154,10 +159,8 @@ export default function Dashboard() {
                 className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white outline-none"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs text-slate-400">
-                Duration (minutes)
-              </label>
+            <div className="flex-1">
+              <label className="mb-1 block text-xs text-slate-400">Duration (minutes)</label>
               <input
                 value={minutes}
                 onChange={(e) => setMinutes(e.target.value)}
@@ -172,7 +175,7 @@ export default function Dashboard() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-lg bg-cyan-500 px-4 py-2.5 font-semibold text-white hover:bg-cyan-400 disabled:opacity-50"
+            className="mt-4 w-full rounded-lg bg-cyan-500 py-2.5 font-semibold text-white hover:bg-cyan-400 disabled:opacity-50"
           >
             {busy ? "Creating…" : "Create Stream"}
           </button>
