@@ -1,26 +1,28 @@
 #![no_std]
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, contracttype, symbol_short, token, Address, Env,
+};
 
 /// A payment stream: flows linearly from sender to recipient between start and stop time.
 #[contracttype]
 #[derive(Clone)]
 pub struct Stream {
-    pub sender: Address,     // stream creator (payer)
-    pub recipient: Address,  // receiver
-    pub token: Address,      // token (SAC) address being streamed
-    pub amount: i128,        // total amount to stream
-    pub withdrawn: i128,     // amount withdrawn so far
-    pub start_time: u64,     // start time (unix timestamp)
-    pub stop_time: u64,      // stop time (unix timestamp)
-    pub cancelled: bool,     // whether the stream is cancelled
+    pub sender: Address,
+    pub recipient: Address,
+    pub token: Address,
+    pub amount: i128,
+    pub withdrawn: i128,
+    pub start_time: u64,
+    pub stop_time: u64,
+    pub cancelled: bool,
 }
 
 /// Storage keys
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
-    Stream(u64),   // stream_id -> Stream
-    StreamCount,   // total stream counter
+    Stream(u64),
+    StreamCount,
 }
 
 /// Contract errors
@@ -41,6 +43,65 @@ pub struct AquaContract;
 
 #[contractimpl]
 impl AquaContract {
+    /// Create a new stream and escrow the full amount into this contract.
+    pub fn create_stream(
+        env: Env,
+        sender: Address,
+        recipient: Address,
+        token_addr: Address,
+        amount: i128,
+        start_time: u64,
+        stop_time: u64,
+    ) -> Result<u64, Error> {
+        // Only the sender can create a stream from their own funds.
+        sender.require_auth();
+
+        // Validate inputs.
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+        if stop_time <= start_time {
+            return Err(Error::InvalidTimeRange);
+        }
+
+        // Cross-contract call #1: pull tokens from sender into this contract (escrow).
+        let token_client = token::Client::new(&env, &token_addr);
+        token_client.transfer(&sender, &env.current_contract_address(), &amount);
+
+        // Assign a new stream id.
+        let mut count: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey::StreamCount)
+            .unwrap_or(0);
+        let stream_id = count;
+        count += 1;
+
+        // Build and persist the stream.
+        let stream = Stream {
+            sender: sender.clone(),
+            recipient: recipient.clone(),
+            token: token_addr,
+            amount,
+            withdrawn: 0,
+            start_time,
+            stop_time,
+            cancelled: false,
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::Stream(stream_id), &stream);
+        env.storage().instance().set(&DataKey::StreamCount, &count);
+
+        // Emit event for real-time frontend updates.
+        env.events().publish(
+            (symbol_short!("created"), stream_id),
+            (sender, recipient, amount, start_time, stop_time),
+        );
+
+        Ok(stream_id)
+    }
+
     /// Read a stream by its id.
     pub fn get_stream(env: Env, stream_id: u64) -> Result<Stream, Error> {
         env.storage()
