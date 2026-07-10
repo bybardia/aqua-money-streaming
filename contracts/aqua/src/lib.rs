@@ -1,6 +1,7 @@
 #![no_std]
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, symbol_short, token, Address, Env,
+    contract, contractclient, contracterror, contractimpl, contracttype, symbol_short, token,
+    Address, Env,
 };
 
 /// A payment stream: flows linearly from sender to recipient between start and stop time.
@@ -23,6 +24,7 @@ pub struct Stream {
 pub enum DataKey {
     Stream(u64),
     StreamCount,
+    Registry,
 }
 
 /// Contract errors
@@ -36,6 +38,19 @@ pub enum Error {
     InvalidAmount = 4,
     StreamCancelled = 5,
     NothingToWithdraw = 6,
+    AlreadyInitialized = 7,
+}
+
+/// Minimal client interface for the Registry contract (for cross-contract calls).
+#[contractclient(name = "RegistryClient")]
+pub trait RegistryInterface {
+    fn record_stream(
+        env: Env,
+        stream_id: u64,
+        sender: Address,
+        recipient: Address,
+        amount: i128,
+    );
 }
 
 /// Amount vested for a stream at a given timestamp (linear vesting).
@@ -56,6 +71,15 @@ pub struct AquaContract;
 
 #[contractimpl]
 impl AquaContract {
+    /// Set the Registry contract address (called once after deployment).
+    pub fn initialize(env: Env, registry: Address) -> Result<(), Error> {
+        if env.storage().instance().has(&DataKey::Registry) {
+            return Err(Error::AlreadyInitialized);
+        }
+        env.storage().instance().set(&DataKey::Registry, &registry);
+        Ok(())
+    }
+
     /// Create a new stream and escrow the full amount into this contract.
     pub fn create_stream(
         env: Env,
@@ -75,7 +99,7 @@ impl AquaContract {
             return Err(Error::InvalidTimeRange);
         }
 
-        // Cross-contract call: pull tokens from sender into this contract (escrow).
+        // Cross-contract call #1: pull tokens from sender into this contract (escrow).
         let token_client = token::Client::new(&env, &token_addr);
         token_client.transfer(&sender, &env.current_contract_address(), &amount);
 
@@ -102,6 +126,16 @@ impl AquaContract {
             .set(&DataKey::Stream(stream_id), &stream);
         env.storage().instance().set(&DataKey::StreamCount, &count);
 
+        // Cross-contract call #2: record the stream in the Registry (if configured).
+        if let Some(registry_addr) = env
+            .storage()
+            .instance()
+            .get::<DataKey, Address>(&DataKey::Registry)
+        {
+            let registry_client = RegistryClient::new(&env, &registry_addr);
+            registry_client.record_stream(&stream_id, &sender, &recipient, &amount);
+        }
+
         env.events().publish(
             (symbol_short!("created"), stream_id),
             (sender, recipient, amount, start_time, stop_time),
@@ -118,7 +152,6 @@ impl AquaContract {
             .get(&DataKey::Stream(stream_id))
             .ok_or(Error::StreamNotFound)?;
 
-        // Only the recipient can withdraw.
         stream.recipient.require_auth();
 
         if stream.cancelled {
@@ -131,7 +164,6 @@ impl AquaContract {
             return Err(Error::NothingToWithdraw);
         }
 
-        // Cross-contract call: pay out from escrow to the recipient.
         let token_client = token::Client::new(&env, &stream.token);
         token_client.transfer(
             &env.current_contract_address(),
@@ -161,7 +193,6 @@ impl AquaContract {
             .get(&DataKey::Stream(stream_id))
             .ok_or(Error::StreamNotFound)?;
 
-        // Only the sender can cancel the stream.
         stream.sender.require_auth();
 
         if stream.cancelled {
@@ -170,8 +201,8 @@ impl AquaContract {
 
         let now = env.ledger().timestamp();
         let vested = vested_amount(&stream, now);
-        let recipient_amount = vested - stream.withdrawn; // owed to recipient
-        let sender_refund = stream.amount - vested; // returned to sender
+        let recipient_amount = vested - stream.withdrawn;
+        let sender_refund = stream.amount - vested;
 
         let token_client = token::Client::new(&env, &stream.token);
         if recipient_amount > 0 {
