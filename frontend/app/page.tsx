@@ -1,4 +1,5 @@
 import WalletButton from "@/components/WalletButton";
+import Stats from "@/components/Stats";
 
 export default function Home() {
   return (
@@ -11,6 +12,7 @@ export default function Home() {
         </p>
       </div>
       <WalletButton />
+      <Stats />
     </main>
   );
 }
