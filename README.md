@@ -6,6 +6,8 @@ token vesting. Recipients withdraw their vested balance at any moment, and
 senders can cancel an active stream to get a **fair refund** of the unstreamed
 portion.
 
+> ⚠️ **Network:** This dApp runs on the **Stellar Testnet**. Set your Freighter wallet to Testnet to try it.
+
 ## ✨ Features
 - ⏱️ Per-second linear token streaming
 - 💸 Withdraw vested funds anytime (recipient)
