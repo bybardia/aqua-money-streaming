@@ -5,6 +5,7 @@ import { isConnected, requestAccess, getAddress } from "@stellar/freighter-api";
 import { createStream } from "@/lib/tx";
 import { NATIVE_TOKEN_ID } from "@/lib/config";
 import Stats from "@/components/Stats";
+import StreamList from "@/components/StreamList";
 
 export default function Dashboard() {
   const [address, setAddress] = useState<string | null>(null);
@@ -16,6 +17,7 @@ export default function Dashboard() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [ok, setOk] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -62,6 +64,7 @@ export default function Dashboard() {
       setOk(true);
       setMsg(`✅ Stream created! tx: ${hash.slice(0, 10)}…`);
       setRecipient("");
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       setOk(false);
       setMsg(err instanceof Error ? err.message : "Failed to create stream");
@@ -107,8 +110,15 @@ export default function Dashboard() {
             onChange={(e) => setRecipient(e.target.value)}
             required
             placeholder="G..."
-            className="mb-4 w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-sm text-white outline-none"
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-sm text-white outline-none"
           />
+          <button
+            type="button"
+            onClick={() => setRecipient(address)}
+            className="mb-4 mt-1 text-xs text-cyan-400 hover:underline"
+          >
+            Use my address (stream to myself)
+          </button>
 
           <div className="mb-4 flex gap-3">
             <div className="flex-1">
@@ -154,6 +164,8 @@ export default function Dashboard() {
           )}
         </form>
       )}
+
+      {address && <StreamList address={address} refreshKey={refreshKey} />}
     </div>
   );
 }

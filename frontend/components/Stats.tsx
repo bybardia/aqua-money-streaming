@@ -14,6 +14,12 @@ function Card({ label, value }: { label: string; value: string }) {
   );
 }
 
+function fmtVolume(rawStroops: string): string {
+  if (rawStroops === "…") return rawStroops;
+  const xlm = Number(rawStroops) / 1e7;
+  return xlm.toLocaleString(undefined, { maximumFractionDigits: 4 });
+}
+
 export default function Stats() {
   const [count, setCount] = useState<string>("…");
   const [total, setTotal] = useState<string>("…");
@@ -39,7 +45,7 @@ export default function Stats() {
       }
     }
     load();
-    const id = setInterval(load, 5000); // refresh every 5s
+    const id = setInterval(load, 5000);
     return () => {
       alive = false;
       clearInterval(id);
@@ -51,7 +57,7 @@ export default function Stats() {
       <div className="grid grid-cols-3 gap-3">
         <Card label="Streams (Aqua)" value={count} />
         <Card label="Total Streams" value={total} />
-        <Card label="Total Volume" value={volume} />
+        <Card label="Volume (XLM)" value={fmtVolume(volume)} />
       </div>
       {err && <p className="mt-3 text-center text-sm text-red-400">{err}</p>}
     </div>

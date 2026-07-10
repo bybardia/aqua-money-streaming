@@ -5,48 +5,35 @@ import {
   Address,
   nativeToScVal,
   BASE_FEE,
+  xdr,
 } from "@stellar/stellar-sdk";
 import { signTransaction } from "@stellar/freighter-api";
 import { RPC_URL, NETWORK_PASSPHRASE, AQUA_CONTRACT_ID } from "./config";
 
 const server = new rpc.Server(RPC_URL);
 
-export async function createStream(params: {
-  sender: string;
-  recipient: string;
-  token: string;
-  amount: bigint; // in stroops (1 XLM = 10_000_000)
-  startTime: bigint; // unix seconds
-  stopTime: bigint; // unix seconds
-}): Promise<string> {
-  const account = await server.getAccount(params.sender);
+// Build → simulate/assemble → sign with Freighter → send → poll.
+async function invoke(
+  source: string,
+  method: string,
+  args: xdr.ScVal[],
+): Promise<string> {
+  const account = await server.getAccount(source);
   const contract = new Contract(AQUA_CONTRACT_ID);
 
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
-    .addOperation(
-      contract.call(
-        "create_stream",
-        new Address(params.sender).toScVal(),
-        new Address(params.recipient).toScVal(),
-        new Address(params.token).toScVal(),
-        nativeToScVal(params.amount, { type: "i128" }),
-        nativeToScVal(params.startTime, { type: "u64" }),
-        nativeToScVal(params.stopTime, { type: "u64" }),
-      ),
-    )
+    .addOperation(contract.call(method, ...args))
     .setTimeout(60)
     .build();
 
-  // Simulate + assemble Soroban auth/resources/fees.
   const prepared = await server.prepareTransaction(tx);
 
-  // Sign with Freighter.
   const signed = await signTransaction(prepared.toXDR(), {
     networkPassphrase: NETWORK_PASSPHRASE,
-    address: params.sender,
+    address: source,
   });
   const signedXdr = typeof signed === "string" ? signed : signed.signedTxXdr;
 
@@ -56,7 +43,6 @@ export async function createStream(params: {
     throw new Error("Transaction submission failed.");
   }
 
-  // Poll until the transaction is confirmed.
   let result = await server.getTransaction(sent.hash);
   const started = Date.now();
   while (result.status === "NOT_FOUND" && Date.now() - started < 30000) {
@@ -67,4 +53,34 @@ export async function createStream(params: {
     throw new Error(`Transaction failed: ${result.status}`);
   }
   return sent.hash;
+}
+
+export async function createStream(params: {
+  sender: string;
+  recipient: string;
+  token: string;
+  amount: bigint;
+  startTime: bigint;
+  stopTime: bigint;
+}): Promise<string> {
+  return invoke(params.sender, "create_stream", [
+    new Address(params.sender).toScVal(),
+    new Address(params.recipient).toScVal(),
+    new Address(params.token).toScVal(),
+    nativeToScVal(params.amount, { type: "i128" }),
+    nativeToScVal(params.startTime, { type: "u64" }),
+    nativeToScVal(params.stopTime, { type: "u64" }),
+  ]);
+}
+
+export async function withdraw(caller: string, streamId: number): Promise<string> {
+  return invoke(caller, "withdraw", [
+    nativeToScVal(BigInt(streamId), { type: "u64" }),
+  ]);
+}
+
+export async function cancelStream(caller: string, streamId: number): Promise<string> {
+  return invoke(caller, "cancel_stream", [
+    nativeToScVal(BigInt(streamId), { type: "u64" }),
+  ]);
 }
