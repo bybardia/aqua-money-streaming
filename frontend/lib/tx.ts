@@ -9,6 +9,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { signTransaction } from "@stellar/freighter-api";
 import { signWithLedger } from "./ledger";
+import { getStream } from "./aqua";
 import {
   RPC_URL,
   NETWORK_PASSPHRASE,
@@ -124,6 +125,21 @@ export async function withdraw(
   streamId: number,
   walletType: WalletType
 ): Promise<string> {
+  const stream = await getStream(streamId);
+
+  if (!stream) {
+    throw new Error("Stream not found.");
+  }
+
+  if (
+    stream.recipient.trim().toUpperCase() !==
+    caller.trim().toUpperCase()
+  ) {
+    throw new Error(
+      "Only the recipient wallet can withdraw from this stream."
+    );
+  }
+
   return invoke(
     caller,
     "withdraw",
@@ -137,6 +153,21 @@ export async function cancelStream(
   streamId: number,
   walletType: WalletType
 ): Promise<string> {
+  const stream = await getStream(streamId);
+
+  if (!stream) {
+    throw new Error("Stream not found.");
+  }
+
+  if (
+    stream.sender.trim().toUpperCase() !==
+    caller.trim().toUpperCase()
+  ) {
+    throw new Error(
+      "Only the sender wallet can cancel this stream."
+    );
+  }
+
   return invoke(
     caller,
     "cancel_stream",

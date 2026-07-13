@@ -95,8 +95,17 @@ export default function StreamList({
           s.amount > 0n
             ? Math.min(100, Number((vested * 10000n) / s.amount) / 100)
             : 0;
-        const isRecipient = address === s.recipient;
-        const isSender = address === s.sender;
+        const connectedAddress =
+          address?.trim().toUpperCase() ?? "";
+        const streamRecipient =
+          s.recipient.trim().toUpperCase();
+        const streamSender =
+          s.sender.trim().toUpperCase();
+
+        const isRecipient =
+          connectedAddress === streamRecipient;
+        const isSender =
+          connectedAddress === streamSender;
         const done = now >= Number(s.stopTime);
         const status = s.cancelled ? "cancelled" : done ? "completed" : "active";
         const statusColor = s.cancelled
