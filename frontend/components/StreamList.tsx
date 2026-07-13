@@ -26,7 +26,9 @@ export default function StreamList({
   refreshKey: number;
 }) {
   const [streams, setStreams] = useState<StreamData[]>([]);
-  const [now, setNow] = useState(0);
+  const [now, setNow] = useState(() =>
+    Math.floor(Date.now() / 1000)
+  );
   const [busyId, setBusyId] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -40,12 +42,17 @@ export default function StreamList({
   }
 
   useEffect(() => {
-    load();
+    const initialLoad = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(initialLoad);
   }, [refreshKey]);
 
   useEffect(() => {
-    setNow(Math.floor(Date.now() / 1000));
-    const structural = setInterval(load, 6000);
+    const structural = setInterval(() => {
+      void load();
+    }, 6000);
     const tick = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
     return () => {
       clearInterval(structural);
