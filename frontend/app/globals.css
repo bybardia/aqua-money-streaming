@@ -69,13 +69,13 @@ button {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.25;
+  opacity: 0.16;
   background-image:
     linear-gradient(rgb(56 189 248 / 10%) 1px, transparent 1px),
     linear-gradient(90deg, rgb(56 189 248 / 10%) 1px, transparent 1px);
   background-size: 54px 54px;
   mask-image: linear-gradient(to bottom, black, transparent 78%);
-  animation: grid-drift 24s linear infinite;
+  animation: none;
 }
 
 .aqua-noise {
@@ -90,34 +90,35 @@ button {
 .aqua-orb {
   position: fixed;
   z-index: 0;
-  width: 28rem;
-  height: 28rem;
+  width: 22rem;
+  height: 22rem;
   pointer-events: none;
   border-radius: 9999px;
-  filter: blur(90px);
-  opacity: 0.17;
-  will-change: transform;
+  filter: blur(65px);
+  opacity: 0.11;
+
 }
 
 .aqua-orb-one {
   top: -12rem;
   left: -10rem;
   background: #06b6d4;
-  animation: orb-one 16s ease-in-out infinite alternate;
+  animation: none;
 }
 
 .aqua-orb-two {
   top: 15rem;
   right: -14rem;
   background: #6366f1;
-  animation: orb-two 20s ease-in-out infinite alternate;
+  animation: none;
 }
 
 .aqua-orb-three {
   bottom: -18rem;
   left: 32%;
   background: #0ea5e9;
-  animation: orb-three 18s ease-in-out infinite alternate;
+  display: none;
+  animation: none;
 }
 
 .aqua-logo-shell {
@@ -135,8 +136,8 @@ button {
     0 20px 60px rgb(6 182 212 / 18%),
     inset 0 1px rgb(255 255 255 / 14%);
   transform: perspective(700px) rotateX(7deg) rotateY(-7deg);
-  animation: logo-float 5s ease-in-out infinite;
-  backdrop-filter: blur(18px);
+  transition: transform 200ms ease;
+  backdrop-filter: blur(10px);
 }
 
 .aqua-logo-shell::after {
@@ -161,7 +162,7 @@ button {
   background-size: 220% auto;
   background-clip: text;
   color: transparent;
-  animation: title-shimmer 7s linear infinite;
+  background-position: center;
 }
 
 .aqua-pill {
@@ -282,4 +283,16 @@ button {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* Static premium mode: no continuous motion */
+.aqua-grid,
+.aqua-orb,
+.aqua-logo-shell,
+.aqua-title {
+  animation: none !important;
+}
+
+.aqua-orb-three {
+  display: none;
 }
