@@ -53,7 +53,8 @@ export async function connectLedger(): Promise<{
 
 export async function signWithLedger(
   transactionXdr: string,
-  networkPassphrase: string
+  networkPassphrase: string,
+  expectedAddress: string
 ): Promise<string> {
   let response: Response;
 
@@ -78,6 +79,10 @@ export async function signWithLedger(
 
   if (!response.ok) {
     throw new Error(data.error ?? "Ledger signing failed.");
+  }
+
+  if (data.address !== expectedAddress) {
+    throw new Error("The connected Ledger account does not match the sender.");
   }
 
   if (!data.signedTransactionXdr) {

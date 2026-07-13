@@ -6,13 +6,11 @@ import {
   requestAccess,
   getAddress,
 } from "@stellar/freighter-api";
-import { createStream } from "@/lib/tx";
+import { createStream, type WalletType } from "@/lib/tx";
 import { connectLedger } from "@/lib/ledger";
 import { NATIVE_TOKEN_ID } from "@/lib/config";
 import Stats from "@/components/Stats";
 import StreamList from "@/components/StreamList";
-
-type WalletType = "freighter" | "ledger";
 
 const DISCONNECT_KEY = "aqua_disconnected";
 const WALLET_TYPE_KEY = "aqua_wallet_type";
@@ -125,7 +123,7 @@ export default function Dashboard() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (!address || walletType !== "freighter") return;
+    if (!address || !walletType) return;
 
     setBusy(true);
     setMsg(null);
@@ -144,6 +142,7 @@ export default function Dashboard() {
         amount: stroops,
         startTime: now,
         stopTime: stop,
+        walletType,
       });
 
       setOk(true);
@@ -237,7 +236,7 @@ export default function Dashboard() {
 
       <Stats />
 
-      {address && walletType === "freighter" && (
+      {address && walletType && (
         <form
           onSubmit={submit}
           className="my-8 rounded-2xl border border-slate-700 bg-slate-900/70 p-5"
@@ -313,21 +312,9 @@ export default function Dashboard() {
         </form>
       )}
 
-      {address && walletType === "ledger" && (
-        <section className="my-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
-          <h2 className="font-semibold text-amber-200">
-            Ledger connected successfully
-          </h2>
-
-          <p className="mt-2 text-sm text-amber-100/70">
-            Contract signing will be enabled in the next integration step.
-            Freighter will not be opened while Ledger is selected.
-          </p>
-        </section>
-      )}
-
       <StreamList
-        address={walletType === "freighter" ? address : null}
+        address={address}
+        walletType={walletType}
         refreshKey={refreshKey}
       />
     </main>

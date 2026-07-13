@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { listStreams, StreamData } from "@/lib/aqua";
-import { withdraw, cancelStream } from "@/lib/tx";
+import { withdraw, cancelStream, type WalletType } from "@/lib/tx";
 
 const short = (a: string) => `${a.slice(0, 4)}...${a.slice(-4)}`;
 const xlm = (stroops: bigint) => (Number(stroops) / 1e7).toFixed(4);
@@ -18,9 +18,11 @@ function vestedNow(s: StreamData, now: number): bigint {
 
 export default function StreamList({
   address,
+  walletType,
   refreshKey,
 }: {
   address: string | null;
+  walletType: WalletType | null;
   refreshKey: number;
 }) {
   const [streams, setStreams] = useState<StreamData[]>([]);
@@ -52,7 +54,7 @@ export default function StreamList({
   }, []);
 
   async function run(id: number, fn: () => Promise<string>) {
-    if (!address) return;
+    if (!address || !walletType) return;
     setBusyId(id);
     setErr(null);
     try {
@@ -132,7 +134,7 @@ export default function StreamList({
               <div className="mt-3 flex gap-2">
                 {showWithdraw && (
                   <button
-                    onClick={() => run(s.id, () => withdraw(address!, s.id))}
+                    onClick={() => run(s.id, () => withdraw(address!, s.id, walletType!))}
                     disabled={busyId === s.id || available === 0n}
                     className="flex-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-400 disabled:opacity-40"
                   >
@@ -141,7 +143,7 @@ export default function StreamList({
                 )}
                 {showCancel && (
                   <button
-                    onClick={() => run(s.id, () => cancelStream(address!, s.id))}
+                    onClick={() => run(s.id, () => cancelStream(address!, s.id, walletType!))}
                     disabled={busyId === s.id}
                     className="flex-1 rounded-lg bg-red-500/80 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-40"
                   >
