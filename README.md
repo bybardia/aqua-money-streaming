@@ -528,6 +528,6 @@ The frontend is deployed to Vercel from the `frontend` directory.
 - Mainnet security audit
 - Mainnet deployment
 
-## 📄 License
+### 📄 License
 
 This project is available under the [MIT License](LICENSE).
