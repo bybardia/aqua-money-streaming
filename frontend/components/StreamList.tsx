@@ -75,7 +75,9 @@ export default function StreamList({
     <div className="flex w-full flex-col gap-4">
       <h2 className="text-lg font-semibold text-white">Streams</h2>
       {err && <p className="text-sm text-red-400">{err}</p>}
-      {streams.map((s) => {
+      {[...streams]
+        .sort((first, second) => second.id - first.id)
+        .map((s) => {
         const vested = vestedNow(s, now);
         const available = s.cancelled
           ? 0n
