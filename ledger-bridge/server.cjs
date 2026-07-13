@@ -53,10 +53,10 @@ async function withLedger(callback) {
   }
 }
 
-async function getLedgerAddress(ledger) {
+async function getLedgerAddress(ledger, display = false) {
   const { rawPublicKey } = await ledger.getPublicKey(
     DERIVATION_PATH,
-    false
+    display
   );
 
   return StellarSdk.StrKey.encodeEd25519PublicKey(rawPublicKey);
@@ -74,7 +74,7 @@ app.get("/address", async (_request, response) => {
   try {
     const result = await withLedger(async (ledger) => {
       const configuration = await ledger.getAppConfiguration();
-      const address = await getLedgerAddress(ledger);
+      const address = await getLedgerAddress(ledger, true);
 
       return {
         address,
@@ -107,7 +107,7 @@ app.post("/sign-transaction", async (request, response) => {
 
   try {
     const result = await withLedger(async (ledger) => {
-      const address = await getLedgerAddress(ledger);
+      const address = await getLedgerAddress(ledger, false);
 
       const transaction = StellarSdk.TransactionBuilder.fromXDR(
         transactionXdr,
