@@ -1,17 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isConnected, requestAccess, getAddress } from "@stellar/freighter-api";
+import {
+  isConnected,
+  requestAccess,
+  getAddress,
+} from "@stellar/freighter-api";
 import { createStream } from "@/lib/tx";
+import { connectLedger } from "@/lib/ledger";
 import { NATIVE_TOKEN_ID } from "@/lib/config";
 import Stats from "@/components/Stats";
 import StreamList from "@/components/StreamList";
 
+type WalletType = "freighter" | "ledger";
+
 const DISCONNECT_KEY = "aqua_disconnected";
+const WALLET_TYPE_KEY = "aqua_wallet_type";
 
 export default function Dashboard() {
   const [address, setAddress] = useState<string | null>(null);
+  const [walletType, setWalletType] = useState<WalletType | null>(null);
   const [walletErr, setWalletErr] = useState<string | null>(null);
+  const [ledgerVersion, setLedgerVersion] = useState<string | null>(null);
 
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("10");
@@ -22,48 +32,111 @@ export default function Dashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       try {
         if (localStorage.getItem(DISCONNECT_KEY) === "1") return;
-        const c = await isConnected();
-        if (c.isConnected) {
-          const r = await getAddress();
-          if (r.address) setAddress(r.address);
+
+        const previousWallet = localStorage.getItem(WALLET_TYPE_KEY);
+
+        // Ledger/Speculos requires an explicitly running local bridge,
+        // so it is never reconnected automatically.
+        if (previousWallet === "ledger") return;
+
+        const connection = await isConnected();
+
+        if (connection.isConnected) {
+          const result = await getAddress();
+
+          if (result.address) {
+            setAddress(result.address);
+            setWalletType("freighter");
+          }
         }
-      } catch {}
+      } catch {
+        // Do not interrupt the initial page load when no wallet is available.
+      }
     })();
   }, []);
 
-  async function connect() {
+  async function connectFreighter() {
     setWalletErr(null);
+    setMsg(null);
+
     try {
-      const c = await isConnected();
-      if (!c.isConnected) return setWalletErr("Freighter not detected.");
-      const r = await requestAccess();
-      if (r.error) return setWalletErr(r.error);
+      const connection = await isConnected();
+
+      if (!connection.isConnected) {
+        setWalletErr("Freighter not detected.");
+        return;
+      }
+
+      const result = await requestAccess();
+
+      if (result.error) {
+        setWalletErr(result.error);
+        return;
+      }
+
       localStorage.removeItem(DISCONNECT_KEY);
-      setAddress(r.address);
+      localStorage.setItem(WALLET_TYPE_KEY, "freighter");
+
+      setAddress(result.address);
+      setWalletType("freighter");
+      setLedgerVersion(null);
     } catch {
-      setWalletErr("Could not connect.");
+      setWalletErr("Could not connect to Freighter.");
+    }
+  }
+
+  async function connectLedgerWallet() {
+    setWalletErr(null);
+    setMsg(null);
+    setBusy(true);
+
+    try {
+      const result = await connectLedger();
+
+      localStorage.removeItem(DISCONNECT_KEY);
+      localStorage.setItem(WALLET_TYPE_KEY, "ledger");
+
+      setAddress(result.address);
+      setWalletType("ledger");
+      setLedgerVersion(result.appVersion);
+    } catch (error) {
+      setWalletErr(
+        error instanceof Error ? error.message : "Could not connect to Ledger."
+      );
+    } finally {
+      setBusy(false);
     }
   }
 
   function disconnect() {
     localStorage.setItem(DISCONNECT_KEY, "1");
+    localStorage.removeItem(WALLET_TYPE_KEY);
+
     setAddress(null);
+    setWalletType(null);
+    setLedgerVersion(null);
     setWalletErr(null);
     setMsg(null);
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!address) return;
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!address || walletType !== "freighter") return;
+
     setBusy(true);
     setMsg(null);
+
     try {
       const now = BigInt(Math.floor(Date.now() / 1000));
       const stop = now + BigInt(Number(minutes) * 60);
-      const stroops = BigInt(Math.round(Number(amount) * 10_000_000));
+      const stroops = BigInt(
+        Math.round(Number(amount) * 10_000_000)
+      );
+
       const hash = await createStream({
         sender: address,
         recipient: recipient.trim(),
@@ -72,72 +145,119 @@ export default function Dashboard() {
         startTime: now,
         stopTime: stop,
       });
+
       setOk(true);
       setMsg(`✅ Stream created! tx: ${hash.slice(0, 10)}…`);
       setRecipient("");
-      setRefreshKey((k) => k + 1);
-    } catch (err) {
+      setRefreshKey((current) => current + 1);
+    } catch (error) {
       setOk(false);
-      setMsg(err instanceof Error ? err.message : "Failed to create stream");
+      setMsg(
+        error instanceof Error ? error.message : "Failed to create stream"
+      );
     } finally {
       setBusy(false);
     }
   }
 
-  const shortAddr = address
+  const shortAddress = address
     ? `${address.slice(0, 4)}...${address.slice(-4)}`
     : "";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col items-center gap-2">
+    <main className="mx-auto max-w-4xl px-4 pb-16">
+      <section className="mb-8 rounded-2xl border border-slate-700 bg-slate-900/70 p-5">
         {address ? (
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-slate-800 px-4 py-1.5 font-mono text-sm text-emerald-300">
-              🟢 {shortAddr}
-            </span>
-            <button
-              onClick={disconnect}
-              className="rounded-full border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800"
-            >
-              Disconnect
-            </button>
-          </div>
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="font-mono text-sm text-emerald-400">
+                  🟢 {shortAddress}
+                </div>
+
+                <div className="mt-1 text-xs text-slate-400">
+                  {walletType === "ledger"
+                    ? `Ledger via Speculos · Stellar app ${ledgerVersion}`
+                    : "Freighter · Stellar Testnet"}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={disconnect}
+                className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800"
+              >
+                Disconnect
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-500">
+              Connected to Stellar Testnet. All displayed funds are test assets.
+            </p>
+          </>
         ) : (
-          <button
-            onClick={connect}
-            className="rounded-full bg-cyan-500 px-5 py-2 text-sm font-semibold text-white hover:bg-cyan-400"
-          >
-            Connect Freighter
-          </button>
+          <>
+            <h2 className="mb-3 text-lg font-semibold text-white">
+              Connect a wallet
+            </h2>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={connectFreighter}
+                disabled={busy}
+                className="rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
+              >
+                Connect Freighter
+              </button>
+
+              <button
+                type="button"
+                onClick={connectLedgerWallet}
+                disabled={busy}
+                className="rounded-xl border border-cyan-500 px-4 py-3 font-semibold text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-50"
+              >
+                {busy ? "Connecting…" : "Connect Ledger"}
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-500">
+              Ledger development mode requires the local Speculos emulator and
+              Aqua Ledger Bridge.
+            </p>
+          </>
         )}
-        {address && (
-          <p className="text-xs text-slate-500">
-            To switch wallets, change the active account in Freighter, then reconnect.
+
+        {walletErr && (
+          <p className="mt-3 rounded-lg bg-red-500/10 p-3 text-sm text-red-300">
+            {walletErr}
           </p>
         )}
-        {walletErr && <p className="text-sm text-red-400">{walletErr}</p>}
-      </div>
+      </section>
 
       <Stats />
 
-      {address && (
+      {address && walletType === "freighter" && (
         <form
           onSubmit={submit}
-          className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+          className="my-8 rounded-2xl border border-slate-700 bg-slate-900/70 p-5"
         >
-          <h2 className="mb-4 text-lg font-semibold text-white">Create a stream</h2>
+          <h2 className="mb-5 text-xl font-semibold text-white">
+            Create a stream
+          </h2>
 
-          <label className="mb-1 block text-xs text-slate-400">
+          <label className="mb-2 block text-sm text-slate-300">
             Recipient address (G...)
           </label>
+
           <input
             value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
+            onChange={(event) => setRecipient(event.target.value)}
             required
             placeholder="G..."
             className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-sm text-white outline-none"
           />
+
           <button
             type="button"
             onClick={() => setRecipient(address)}
@@ -146,49 +266,70 @@ export default function Dashboard() {
             Use my address (stream to myself)
           </button>
 
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1 block text-xs text-slate-400">Amount (XLM)</label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm text-slate-300">
+              Amount (XLM)
               <input
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(event) => setAmount(event.target.value)}
                 type="number"
                 min="0.1"
                 step="0.1"
                 required
-                className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white outline-none"
+                className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white outline-none"
               />
-            </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-xs text-slate-400">Duration (minutes)</label>
+            </label>
+
+            <label className="text-sm text-slate-300">
+              Duration (minutes)
               <input
                 value={minutes}
-                onChange={(e) => setMinutes(e.target.value)}
+                onChange={(event) => setMinutes(event.target.value)}
                 type="number"
                 min="1"
                 required
-                className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white outline-none"
+                className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white outline-none"
               />
-            </div>
+            </label>
           </div>
 
           <button
             type="submit"
             disabled={busy}
-            className="mt-4 w-full rounded-lg bg-cyan-500 py-2.5 font-semibold text-white hover:bg-cyan-400 disabled:opacity-50"
+            className="mt-5 w-full rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
           >
             {busy ? "Creating…" : "Create Stream"}
           </button>
 
           {msg && (
-            <p className={`mt-3 text-sm ${ok ? "text-emerald-400" : "text-red-400"}`}>
+            <p
+              className={`mt-3 text-sm ${
+                ok ? "text-emerald-400" : "text-red-400"
+              }`}
+            >
               {msg}
             </p>
           )}
         </form>
       )}
 
-      {address && <StreamList address={address} refreshKey={refreshKey} />}
-    </div>
+      {address && walletType === "ledger" && (
+        <section className="my-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
+          <h2 className="font-semibold text-amber-200">
+            Ledger connected successfully
+          </h2>
+
+          <p className="mt-2 text-sm text-amber-100/70">
+            Contract signing will be enabled in the next integration step.
+            Freighter will not be opened while Ledger is selected.
+          </p>
+        </section>
+      )}
+
+      <StreamList
+        address={walletType === "freighter" ? address : null}
+        refreshKey={refreshKey}
+      />
+    </main>
   );
 }
