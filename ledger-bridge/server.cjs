@@ -22,6 +22,10 @@ const allowedOrigins = new Set([
   "http://127.0.0.1:3000",
 ]);
 
+function shortAddress(address) {
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
 const app = express();
 
 app.use(
@@ -38,6 +42,13 @@ app.use(
 );
 
 app.use(express.json({ limit: "2mb" }));
+
+// Safe request logger for the demo. No secrets are printed.
+app.use((request, _response, next) => {
+  const time = new Date().toISOString();
+  console.log(`[${time}] --> ${request.method} ${request.path}`);
+  next();
+});
 
 async function withLedger(callback) {
   const transport = await SpeculosHttpTransport.open({
@@ -72,6 +83,7 @@ app.get("/health", (_request, response) => {
 
 app.get("/address", async (_request, response) => {
   try {
+    console.log("    waiting for address confirmation on Ledger Stax...");
     const result = await withLedger(async (ledger) => {
       const configuration = await ledger.getAppConfiguration();
       const address = await getLedgerAddress(ledger, true);
@@ -83,6 +95,9 @@ app.get("/address", async (_request, response) => {
       };
     });
 
+    console.log(
+      `    OK address confirmed: ${shortAddress(result.address)} (Stellar app v${result.appVersion})`
+    );
     response.json(result);
   } catch (error) {
     console.error("Failed to read Ledger address:", error);
@@ -106,6 +121,10 @@ app.post("/sign-transaction", async (request, response) => {
   }
 
   try {
+    console.log(
+      `    signing request received (${transactionXdr.length} XDR chars)`
+    );
+    console.log("    waiting for approval on Ledger Stax...");
     const result = await withLedger(async (ledger) => {
       const address = await getLedgerAddress(ledger, false);
 
@@ -130,6 +149,9 @@ app.post("/sign-transaction", async (request, response) => {
       };
     });
 
+    console.log(
+      `    OK transaction approved and signed by ${shortAddress(result.address)}`
+    );
     response.json(result);
   } catch (error) {
     console.error("Ledger signing failed:", error);
@@ -146,4 +168,5 @@ app.listen(PORT, HOST, () => {
   console.log(`Aqua Ledger Bridge: http://${HOST}:${PORT}`);
   console.log(`Speculos: ${SPECULOS_HOST}:${SPECULOS_PORT}`);
   console.log(`Path: ${DERIVATION_PATH}`);
+  console.log("Ready. Waiting for requests from the Aqua frontend...");
 });
