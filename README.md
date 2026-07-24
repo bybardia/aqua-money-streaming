@@ -7,7 +7,7 @@
 [![Soroban](https://img.shields.io/badge/smart%20contracts-Soroban-000)](https://soroban.stellar.org)
 
 - 🌐 **Live app:** https://aqua-money-streaming.vercel.app/
-- 🎥 **Demo video:** https://youtu.be/uRWHOTKqXbw
+- 🎥 **Demo video:** https://youtu.be/QXPCD1pHPMU?si=az9tY_jUQux0IJ_A
 - 📦 **Repo:** https://github.com/bybardia/aqua-money-streaming
 
 ---
