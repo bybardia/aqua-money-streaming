@@ -80,7 +80,6 @@ aqua-money-streaming/
 | Frontend | Next.js (App Router), React 19, Tailwind CSS v4 |
 | Chain access | `@stellar/stellar-sdk` |
 | Wallets | Freighter (`@stellar/freighter-api`), Ledger via Speculos |
-| Monitoring | Vercel Analytics + Speed Insights, Sentry |
 | Hosting | Vercel |
 
 ---
@@ -169,7 +168,6 @@ npm run dev
 - 💬 **Wallet-gated feedback** — only connected wallets can post; feedback is public and tied to its wallet.
 - 🧯 **Resilient UX** — loading, error, and empty states across all routes.
 - 📱 **Responsive** — works on mobile with a collapsible nav.
-- 📈 **Monitoring** — Vercel Analytics + Sentry error tracking.
 
 ---
 
@@ -178,7 +176,6 @@ npm run dev
 - [x] Core money-streaming contract on Testnet
 - [x] Multi-page dApp (create, explore, about, feedback)
 - [x] Freighter + simulated Ledger signing
-- [x] Analytics + error monitoring
 - [ ] Multi-contract payroll orchestration (Factory / Treasury / Access-Control)
 - [ ] Anchor / SEP-24 fiat off-ramp (FlowBridge)
 - [ ] Mainnet deployment with licensed anchors & real KYC
