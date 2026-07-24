@@ -1,533 +1,196 @@
-# 🌊 Aqua — Real-Time Money Streaming on Stellar
+# 💧 Aqua — Real-Time Money Streaming on Stellar
 
-[![CI](https://github.com/bybardia/aqua-money-streaming/actions/workflows/ci.yml/badge.svg)](https://github.com/bybardia/aqua-money-streaming/actions/workflows/ci.yml)
-[![Stellar](https://img.shields.io/badge/Stellar-Testnet-7C3AED)](https://stellar.org/)
-[![Soroban](https://img.shields.io/badge/Smart%20Contracts-Soroban-06B6D4)](https://stellar.org/soroban)
-[![License](https://img.shields.io/badge/License-MIT-22C55E)](LICENSE)
+> Programmable, per-second money streams on Stellar Soroban. The streaming core of **FlowBridge** — a vision for programmable cross-border payroll.
 
-Aqua is a decentralized money-streaming protocol built on Stellar Soroban.
+[![Live Demo](https://img.shields.io/badge/demo-live-06b6d4)](https://aqua-money-streaming.vercel.app/)
+[![Network](https://img.shields.io/badge/network-Stellar%20Testnet-8b5cf6)](https://stellar.org)
+[![Soroban](https://img.shields.io/badge/smart%20contracts-Soroban-000)](https://soroban.stellar.org)
 
-Instead of sending a complete payment at once, Aqua lets users stream tokens continuously over time. It is designed for salaries, subscriptions, grants, recurring payments, and token vesting.
+- 🌐 **Live app:** https://aqua-money-streaming.vercel.app/
+- 🎥 **Demo video:** https://youtu.be/uRWHOTKqXbw
+- 📦 **Repo:** https://github.com/bybardia/aqua-money-streaming
 
-Recipients can withdraw their vested balance at any moment. Senders can cancel an active stream and receive a fair refund of the unstreamed portion.
+---
 
-> ⚠️ **Network:** Aqua currently runs on the **Stellar Testnet**. All displayed assets have no real-world value.
+## ⚠️ Honest disclosure (please read)
 
-## ✨ Features
+Aqua is a **Testnet** project built for learning and demonstration. To avoid any confusion:
 
-- ⏱️ Per-second linear token streaming
-- 💸 Withdraw vested funds at any time
-- 🛑 Cancel active streams with a fair refund
-- 📊 On-chain registry for stream and volume analytics
-- 🔴 Live vested-balance updates
-- 🆕 Newest streams displayed first
-- 👛 Freighter browser-wallet integration
-- 🔐 Ledger signing through Speculos
-- 💳 Ledger Stax and Nano S Plus development support
-- 🔗 Cross-contract communication between Aqua and Registry
-- 📱 Responsive desktop and mobile interface
-- 🎨 Custom Aqua protocol mark and premium static UI
-- ⏳ Loading, success, rejection, and error states
-- ✅ Rust smart-contract test suite
-- 🔄 GitHub Actions CI/CD pipeline
-- 🚀 Live deployment on Vercel
+- Everything runs on **Stellar Testnet**. All balances are **test assets with no real-world value**.
+- Hardware-wallet signing is demonstrated with a **simulated Ledger Stax** running in the **Speculos** emulator — **not a physical device**.
+- Ledger signing uses **Blind Signing**. Aqua does **not** claim Clear Signing, a hardware Secure Element, or any "agent kit" security.
+- Aqua stores **no private keys** and collects **no KYC / personal data**.
 
-## 🌐 Live Project
+---
 
-- **Live demo:** https://aqua-money-streaming.vercel.app/
-- **GitHub repository:** https://github.com/bybardia/aqua-money-streaming
-- **Video walkthrough:** https://youtu.be/uRWHOTKqXbw
-- **Network:** Stellar Testnet
+## What is Aqua?
 
-> The hosted Vercel demo supports Freighter. Ledger Speculos mode requires the local bridge described below.
+Instead of paying someone in one lump sum, Aqua lets money **flow continuously, second by second**, from a sender to a recipient. It's a better primitive for:
+
+- 💼 Salaries & payroll
+- 🔁 Subscriptions
+- 🎓 Grants & vesting
+
+### How it works
+
+1. **Fund a stream** — a sender locks an amount of a Stellar asset into the Aqua contract with a start time and stop time.
+2. **Money vests per second** — the recipient's withdrawable balance grows continuously between start and stop.
+3. **Withdraw anytime** — the recipient pulls their vested balance whenever they want.
+4. **Cancel fairly** — if the sender cancels, the recipient keeps everything vested so far and the sender is refunded the rest.
+
+---
+
+## 🌉 The bigger vision: FlowBridge
+
+Aqua is the streaming engine of a larger idea — **FlowBridge: programmable cross-border payroll on Stellar**.
+
+- Employers fund payroll in a stable asset.
+- Remote workers earn continuously via Aqua streams.
+- Eligible users cash out to local currency through Stellar **anchors** (SEP-24).
+
+The payroll orchestration (multi-contract factory/treasury/access-control), anchor/fiat off-ramp, and mainnet deployment are on the roadmap for later stages. **Aqua (this repo) delivers the working streaming core on Testnet today.**
+
+---
 
 ## 🏗️ Architecture
 
-| Package | Description |
-| --- | --- |
-| `contracts/aqua` | Core escrow and streaming contract |
-| `contracts/registry` | On-chain analytics and stream registry |
-| `frontend` | Next.js, TypeScript, and Tailwind multi-wallet dApp |
-| `ledger-bridge` | Local bridge between Aqua and Ledger Speculos |
-| `.github/workflows/ci.yml` | Contract and frontend CI/CD pipeline |
+```
+aqua-money-streaming/
+├── contracts/
+│   ├── aqua/          # Core money-streaming Soroban contract (Rust)
+│   └── registry/      # Stream registry contract
+├── frontend/          # Next.js (App Router) dApp
+│   ├── app/
+│   │   ├── page.tsx        # Landing page (hero + live stats + CTA)
+│   │   ├── app/            # The dApp: create streams
+│   │   ├── streams/        # Explorer: browse all streams
+│   │   ├── about/          # How it works + disclosure
+│   │   ├── feedback/       # Wallet-gated feedback + public feed
+│   │   └── api/feedback/   # Feedback storage endpoint
+│   ├── components/         # Navbar, Dashboard, Stats, StreamList
+│   └── lib/                # wallet, contract calls, config, ledger bridge
+└── ledger-bridge/     # Local bridge to Speculos (simulated Ledger)
+```
 
-### Contract architecture
+### Tech stack
 
-~~~text
-Sender
-  |
-  | create_stream
-  v
-Aqua Contract
-  |
-  | Cross-contract call
-  v
-Registry Contract
-~~~
+| Layer | Tech |
+|---|---|
+| Smart contracts | Rust + Soroban SDK |
+| Frontend | Next.js (App Router), React 19, Tailwind CSS v4 |
+| Chain access | `@stellar/stellar-sdk` |
+| Wallets | Freighter (`@stellar/freighter-api`), Ledger via Speculos |
+| Monitoring | Vercel Analytics + Speed Insights, Sentry |
+| Hosting | Vercel |
 
-The Aqua contract manages token escrow, vesting, withdrawals, and cancellation. Whenever a stream is created, Aqua automatically calls the Registry contract to record its analytics.
+---
 
-### Frontend signing architecture
+## 📜 Deployed contracts (Stellar Testnet)
 
-~~~text
-                         ┌─────────────────────┐
-                         │ Freighter Extension │
-                         └──────────▲──────────┘
-                                    │
-Aqua Frontend ── Wallet Adapter ────┤
-                                    │
-                         ┌──────────▼──────────┐
-                         │ Local Ledger Bridge │
-                         └──────────┬──────────┘
-                                    │ APDU
-                         ┌──────────▼──────────┐
-                         │ Ledger Speculos     │
-                         │ Stax / Nano S Plus  │
-                         └─────────────────────┘
-~~~
-
-Both signing methods interact with the same deployed Aqua contracts on Stellar Testnet.
-
-## 📜 Deployed Contracts
-
-| Contract | Testnet Address |
-| --- | --- |
-| Aqua | `CAYCGEXSUJ2SYV5L3OQ52UOCWGNZ7XK6H7ODXAURYCLAE3HPS4SJZUFG` |
+| Contract | Address |
+|---|---|
+| Aqua (streaming) | `CAYCGEXSUJ2SYV5L3OQ52UOCWGNZ7XK6H7ODXAURYCLAE3HPS4SJZUFG` |
 | Registry | `CCVABJMB3KN3DVTVJY5FCS5YXMXJKFQYCIRHRRJPQBTFWEDMNFA6P5HV` |
-| Native XLM SAC | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` |
+| Native token (XLM) | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` |
 
-### Explorer links
+- **RPC:** `https://soroban-testnet.stellar.org`
+- **Network passphrase:** `Test SDF Network ; September 2015`
 
-- [Aqua contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAYCGEXSUJ2SYV5L3OQ52UOCWGNZ7XK6H7ODXAURYCLAE3HPS4SJZUFG)
-- [Registry contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CCVABJMB3KN3DVTVJY5FCS5YXMXJKFQYCIRHRRJPQBTFWEDMNFA6P5HV)
-- [Sample initialize transaction](https://stellar.expert/explorer/testnet/tx/6ec37dee236d703d941a5798bcda50377655d5885956a08a54cb6b14024cc8d0)
+### Core contract functions
 
-### Deployment transaction hashes
+| Function | Description |
+|---|---|
+| `create_stream(sender, recipient, token, amount, start_time, stop_time) -> u64` | Open a new stream, returns stream id |
+| `withdraw(stream_id)` | Recipient withdraws vested balance (auth: recipient) |
+| `cancel_stream(stream_id)` | Sender cancels, splitting funds fairly (auth: sender) |
+| `get_stream(stream_id)` | Read a stream's state |
+| `stream_count()` | Total number of streams |
+| `balance(...)` | Vested/withdrawable balance |
+| `initialize(...)` | One-time contract setup |
 
-| Interaction | Transaction Hash |
-| --- | --- |
-| Aqua initialization | `6ec37dee236d703d941a5798bcda50377655d5885956a08a54cb6b14024cc8d0` |
-| Registry initialization | `84d0043742342a7b58cbf886217ef6aa5ea725ee9b00f73c8ac60d94c7236a30` |
+---
 
-## ⚙️ How Aqua Works
-
-### Creating a stream
-
-1. The sender connects Freighter or a local Ledger Speculos account.
-2. The sender provides the recipient address, amount, and duration.
-3. Aqua builds and simulates the Soroban transaction.
-4. The selected wallet reviews and signs the transaction.
-5. The Aqua contract transfers tokens into escrow.
-6. Aqua calls the Registry contract to record the stream.
-7. The stream appears at the top of the interface.
-
-### Vesting
-
-The vested amount increases linearly over time:
-
-~~~text
-vested = total_amount × elapsed_time / stream_duration
-~~~
-
-Before the start time, the vested amount is zero. After the stop time, the complete stream amount is vested.
-
-### Withdrawal
-
-The recipient can withdraw:
-
-~~~text
-available = vested_amount - previously_withdrawn
-~~~
-
-A withdrawal only transfers the amount that has vested and has not already been withdrawn.
-
-### Cancellation
-
-When the sender cancels an active stream:
-
-- The recipient receives the vested remainder.
-- The sender receives the unstreamed remainder.
-- The stream is marked as cancelled.
-- No additional amount can vest after cancellation.
-
-## 🧱 Tech Stack
-
-### Smart contracts
-
-- Rust
-- Soroban SDK
-- Stellar CLI
-- Stellar Asset Contract
-- Cross-contract invocation
-
-### Frontend
-
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS
-- Stellar JavaScript SDK
-- Freighter API
-
-### Ledger development integration
-
-- Official Stellar Ledger app
-- Ledger Speculos
-- LedgerJS Stellar bindings
-- Local Node.js signing bridge
-- Ledger Stax emulator
-- Ledger Nano S Plus emulator
-
-### Infrastructure
-
-- GitHub Actions
-- Vercel
-- Stellar Testnet RPC
-- Stellar Horizon
-- Stellar Expert
-
-## 🚀 Getting Started
+## 🚀 Local development
 
 ### Prerequisites
 
-- Git
-- Rust
-- Stellar CLI
 - Node.js 20+
-- npm
-- Freighter wallet extension
-- Docker for optional Ledger Speculos mode
+- Rust + `stellar` CLI (for contracts)
+- A [Freighter](https://freighter.app) wallet on Testnet
 
-Clone the repository:
+### 1. Frontend
 
-~~~bash
-git clone https://github.com/bybardia/aqua-money-streaming.git
-cd aqua-money-streaming
-~~~
-
-## 🦀 Smart Contracts
-
-Build the contracts:
-
-~~~bash
-stellar contract build
-~~~
-
-Run the tests:
-
-~~~bash
-cargo test --workspace
-~~~
-
-Run formatting checks:
-
-~~~bash
-cargo fmt --all -- --check
-~~~
-
-Run Clippy:
-
-~~~bash
-cargo clippy --all-targets --workspace
-~~~
-
-Build the optimized WASM contracts:
-
-~~~bash
-cargo build --workspace --release --target wasm32v1-none
-~~~
-
-Deployment information is available in [`DEPLOYMENT.md`](DEPLOYMENT.md).
-
-## 🖥️ Frontend
-
-Install dependencies:
-
-~~~bash
+```bash
 cd frontend
 npm install
-~~~
-
-Start development mode:
-
-~~~bash
+cp .env.local.example .env.local   # then fill in the values below
 npm run dev
-~~~
+```
 
-Open:
+Open http://localhost:3000
 
-~~~text
-http://localhost:3000
-~~~
+### 2. Environment variables (`frontend/.env.local`)
 
-For production mode:
+```bash
+# Feedback storage (Google Apps Script web app URL)
+FEEDBACK_SHEET_URL=https://script.google.com/macros/s/XXXX/exec
 
-~~~bash
-npm run build
-npm start
-~~~
+# Optional: local Ledger bridge (Speculos)
+NEXT_PUBLIC_LEDGER_BRIDGE_URL=http://127.0.0.1:5050
+```
 
-Testnet configuration and deployed contract addresses are stored in:
+> On Vercel, add the same variables under **Settings → Environments → Production**. `SENTRY_AUTH_TOKEN` is also required there for source-map upload at build time.
 
-~~~text
-frontend/lib/config.ts
-~~~
+### 3. (Optional) Simulated Ledger via Speculos
 
-## 👛 Freighter Wallet
+Aqua can sign with a **simulated** Ledger Stax running in Speculos, bridged by a small local server.
 
-1. Install the Freighter browser extension.
-2. Set Freighter to **Testnet**.
-3. Open Aqua.
-4. Select **Connect Freighter**.
-5. Approve the connection.
-6. Create, withdraw, or cancel a stream.
-7. Review and approve each transaction in Freighter.
+```bash
+# Terminal 1 — Speculos (Docker)
+# (see docs; runs the Stellar app on a simulated Stax at api port 5001)
 
-To switch accounts, change the active account inside Freighter before reconnecting.
-
-## 🔐 Ledger and Speculos
-
-Aqua includes a local Ledger development integration using the official Stellar Ledger application.
-
-### Supported local models
-
-- Ledger Stax
-- Ledger Nano S Plus
-
-### Important limitation
-
-The current Ledger integration uses Speculos and a local Node.js bridge. It is not enabled on the public Vercel deployment by default.
-
-### Build the Stellar Ledger app
-
-Clone the official repository outside Aqua:
-
-~~~bash
-mkdir -p ~/ledger-dev
-cd ~/ledger-dev
-git clone --branch develop https://github.com/LedgerHQ/app-stellar.git
-cd app-stellar
-~~~
-
-Pull the official Ledger development image:
-
-~~~bash
-sudo docker pull ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:latest
-~~~
-
-Allow the Docker container to use the local display:
-
-~~~bash
-xhost +local:docker
-~~~
-
-Enter the Ledger development container:
-
-~~~bash
-sudo docker run --rm -ti \
-  --privileged \
-  -v "/dev/bus/usb:/dev/bus/usb" \
-  -v "$(realpath .):/app" \
-  --publish 5001:5001 \
-  --publish 9999:9999 \
-  -e DISPLAY="$DISPLAY" \
-  -v "/tmp/.X11-unix:/tmp/.X11-unix" \
-  ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:latest
-~~~
-
-### Build for Ledger Stax
-
-Inside Docker:
-
-~~~bash
-cd /app
-pip install -r requirements.txt
-cargo ledger build stax
-~~~
-
-Run Ledger Stax:
-
-~~~bash
-speculos \
-  --apdu-port 9999 \
-  --api-port 5001 \
-  --model stax \
-  target/stax/release/stellar
-~~~
-
-### Build for Nano S Plus
-
-Inside Docker:
-
-~~~bash
-cargo ledger build nanosplus
-~~~
-
-Run Nano S Plus:
-
-~~~bash
-speculos \
-  --apdu-port 9999 \
-  --api-port 5001 \
-  --display headless \
-  --model nanosp \
-  target/nanosplus/release/stellar
-~~~
-
-The Speculos web interface is available at:
-
-~~~text
-http://localhost:5001
-~~~
-
-### Start the Aqua Ledger Bridge
-
-In another terminal:
-
-~~~bash
-cd ~/aqua-money-streaming/ledger-bridge
-npm install
-npm start
-~~~
-
-The bridge listens locally at:
-
-~~~text
-http://127.0.0.1:5050
-~~~
-
-Check the bridge:
-
-~~~bash
-curl http://127.0.0.1:5050/health
-curl http://127.0.0.1:5050/address
-~~~
-
-### Connect Aqua to Ledger
-
-Keep these processes running:
-
-1. Stellar Ledger app in Speculos
-2. Aqua Ledger Bridge
-3. Aqua frontend
-
-Then:
-
-1. Open `http://localhost:3000`.
-2. Select **Connect Ledger**.
-3. Confirm the displayed Stellar address.
-4. Create, withdraw, or cancel a stream.
-5. Review the request inside the simulated Ledger interface.
-6. Approve the transaction.
-7. Aqua submits it to Stellar Testnet.
-
-### Blind Signing
-
-Soroban contract calls may not be fully clear-signed by the current Stellar Ledger app.
-
-For local Testnet testing:
-
-1. Open the Stellar app settings in Speculos.
-2. Enable **Blind Signing**.
-3. Keep **Nested Authorization** enabled.
-4. Only approve known Aqua Testnet transactions.
-
-> Never use a Speculos seed, Blind Signing, or this local setup with real assets.
-
-See [`ledger-bridge/README.md`](ledger-bridge/README.md) for additional information.
-
-## 🧪 Testing
-
-The contract tests cover:
-
-- Token escrow
-- Linear vesting calculations
-- Partial withdrawals
-- Prevention of double withdrawals
-- Fair cancellation
-- Amount and time validation
-- Authorization requirements
-- Registry updates
-
-Run contract tests:
-
-~~~bash
-cargo test --workspace
-~~~
-
-Validate the frontend:
-
-~~~bash
-cd frontend
-npm run lint
-npm run build
-~~~
-
-Validate the Ledger Bridge:
-
-~~~bash
+# Terminal 2 — bridge
 cd ledger-bridge
-npm ci
-node --check server.cjs
-~~~
+npm start        # express server on 127.0.0.1:5050
 
-## 🔄 CI/CD
+# Terminal 3 — frontend
+cd frontend
+npm run dev
+```
 
-GitHub Actions runs automatically on pushes and pull requests to `main`.
+---
 
-### Smart-contract job
+## ✨ Features
 
-- Rust formatting
-- Clippy
-- Contract tests
-- Optimized WASM build
+- ⏱️ **Per-second streaming** — balances vest live in the UI.
+- 👛 **Two wallets** — Freighter (browser) and a simulated Ledger (Speculos).
+- 🔎 **Explorer** — browse every stream on the contract.
+- 📊 **Live stats** — total streams and volume, auto-refreshing.
+- 💬 **Wallet-gated feedback** — only connected wallets can post; feedback is public and tied to its wallet.
+- 🧯 **Resilient UX** — loading, error, and empty states across all routes.
+- 📱 **Responsive** — works on mobile with a collapsible nav.
+- 📈 **Monitoring** — Vercel Analytics + Sentry error tracking.
 
-### Frontend job
-
-- Dependency installation
-- ESLint
-- Next.js production build
-
-The frontend is deployed to Vercel from the `frontend` directory.
-
-## 📸 Screenshots
-
-| Desktop | Mobile |
-| --- | --- |
-| ![Aqua desktop interface](screenshots/ui.png) | ![Aqua mobile interface](screenshots/mobile.png) |
-
-### CI/CD pipeline
-
-![Aqua GitHub Actions](screenshots/ci.png)
-
-### Contract tests
-
-![Aqua contract tests](screenshots/tests.png)
-
-## 🛡️ Security Notes
-
-- Aqua currently runs on Stellar Testnet.
-- Testnet assets have no real-world value.
-- The contracts have not received a professional security audit.
-- The Ledger Bridge listens only on `127.0.0.1`.
-- Private keys are never returned by Freighter or Ledger.
-- Speculos does not provide hardware-wallet security.
-- Blind Signing should only be used for known Testnet transactions.
-- Mainnet deployment requires an independent security review.
+---
 
 ## 🗺️ Roadmap
 
-- Physical Ledger support through WebHID
-- Improved Ledger clear-signing support
-- Multi-token streams
-- Recurring streams
-- Batch salary streaming
-- Stream metadata and labels
-- Employer and recipient dashboards
-- Anchor-powered on/off-ramp integration
-- Mainnet security audit
-- Mainnet deployment
+- [x] Core money-streaming contract on Testnet
+- [x] Multi-page dApp (create, explore, about, feedback)
+- [x] Freighter + simulated Ledger signing
+- [x] Analytics + error monitoring
+- [ ] Multi-contract payroll orchestration (Factory / Treasury / Access-Control)
+- [ ] Anchor / SEP-24 fiat off-ramp (FlowBridge)
+- [ ] Mainnet deployment with licensed anchors & real KYC
 
-### 📄 License
+---
 
-This project is available under the [MIT License](LICENSE).
+## 🙏 Feedback
+
+Tried Aqua on Testnet? Connect your wallet and leave feedback at **/feedback** on the live app. Every review is public and tied to the wallet that submitted it.
+
+---
+
+## 📄 License
+
+MIT — for educational / demonstration use on Stellar Testnet.
