@@ -1,4 +1,5 @@
-import Dashboard from "@/components/Dashboard";
+import Link from "next/link";
+import Stats from "@/components/Stats";
 
 const features = [
   { icon: "↯", label: "Per-second streaming" },
@@ -168,11 +169,31 @@ export default function Home() {
           </div>
         </header>
 
-        <Dashboard />
+        
 
-        <footer className="mx-auto mt-16 max-w-4xl border-t border-slate-800/70 px-4 py-8 text-center text-xs text-slate-600">
-          Built on Stellar Soroban · Testnet assets have no real-world value
-        </footer>
+        <section className="mx-auto -mt-2 flex max-w-4xl flex-col items-center px-4">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/app"
+              className="rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 px-6 py-3 font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:opacity-90"
+            >
+              Launch App →
+            </Link>
+            <Link
+              href="/streams"
+              className="rounded-xl border border-white/10 px-6 py-3 font-semibold text-slate-200 transition hover:bg-white/5"
+            >
+              Explore streams
+            </Link>
+          </div>
+
+          <div className="mt-14 w-full max-w-4xl">
+            <h2 className="mb-4 text-center text-xs font-bold uppercase tracking-[0.28em] text-cyan-300/70">
+              Live on Testnet
+            </h2>
+            <Stats />
+          </div>
+        </section>
       </div>
     </div>
   );
