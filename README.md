@@ -191,6 +191,25 @@ Tried Aqua on Testnet? Connect your wallet and leave feedback at **/feedback** o
 
 ---
 
+## 📸 Screenshots
+
+### Home (landing)
+![Home](screenshots/01-home.png)
+
+### Create a stream (/app)
+![Create stream](screenshots/02-app-create-stream.png)
+
+### Streams explorer (/streams)
+![Streams explorer](screenshots/03-streams-explorer.png)
+
+### Wallet-gated feedback (/feedback)
+![Feedback](screenshots/04-feedback.png)
+
+### Mobile (responsive navigation)
+![Mobile](screenshots/05-mobile-nav.png)
+
+---
+
 ## 📄 License
 
 MIT — for educational / demonstration use on Stellar Testnet.
